@@ -4,6 +4,15 @@ import numpy as np
 import tensorflow as tf
 
 class Word2Vec(object):
+	lrn_rate = 0.01
+	model_type = 'skip-gram'
+	window_size = 1
+	embed_size = 2
+	batch_size = 20
+	neg_sample_size = 10
+	chkpt_file = 'word2vec.ckpt'
+	num_iter = 3000
+
 	def __init__(self, config, sess):
 		# The tensorflow session
 		self.sess = sess
@@ -58,22 +67,17 @@ class Word2Vec(object):
 		return x_data, y_data				
 
 	def build_skip_gram(self):
+		# Skip-gram input: batch of indices for source words, batch of indices for targets
 		self.train_inputs = tf.placeholder(tf.int32, [self.batch_size])
 		self.train_labels = tf.placeholder(tf.int32, [self.batch_size, 1])
 		# Skip-gram parameters: embedding, hidden layer matrix
-		with tf.device('/cpu:0'):
-			self.embeddings = tf.Variable(
-				tf.random_uniform([self.vocab_size, self.embed_size], -1.0, 1.0))
-			self.embed = tf.nn.embedding_lookup(self.embeddings, self.train_inputs)
+		self.embeddings = tf.Variable(
+			tf.random_uniform([self.vocab_size, self.embed_size], -1.0, 1.0))
+		self.embed = tf.nn.embedding_lookup(self.embeddings, self.train_inputs)
 		self.hidden_weights = tf.Variable(
 			tf.truncated_normal([self.vocab_size, self.embed_size],
 								stddev = 1.0/sqrt(self.embed_size)))
-		self.hidden_biases = tf.Variable(tf.zeros([self.embed_size]))
-		# Skip-gram input: batch of indices for source words, batch of indices for targets
-		#self.train_inputs = tf.placeholder(tf.int32, [self.batch_size])
-		#self.train_labels = tf.placeholder(tf.int32, [self.batch_size, 1])
-		# Find word vectors based on provided indices
-		# self.embed = tf.nn.embedding_lookup(self.embeddings, self.train_inputs)
+		self.hidden_biases = tf.Variable(tf.zeros([self.vocab_size]))
 		# Compute noise-contrastive estimation loss
 		self.loss = tf.reduce_mean(
 			tf.nn.nce_loss(self.hidden_weights, self.hidden_biases, self.embed, self.train_labels,
